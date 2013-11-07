@@ -1,0 +1,26 @@
+ html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+}
+#drop_zone {
+	border: 2px dashed #bbb;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
+	padding: 25px;
+	text-align: center;
+	color: #bbb;
+}
+.iconContainer {
+	height: 100%;
+	width: 100%;
+	overflow: visible;
+}
+.icon {
+	height: 100%;
+	width: 100%;
+	overflow: visible;
+}
