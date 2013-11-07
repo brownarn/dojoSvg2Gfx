@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+    <head>
+        <meta http-equiv="Content-type" content="text/html;charset=ISO-8859-1" />   
+        <title>svg2gfx Converter</title>
+        <script type="text/javascript">
+            var dojoConfig = {
+                async: true,
+                baseUrl: "/abrown/svg2gfx",
+                dojoBlankHtmlUrl: 'blank.html',
+            
+                packages: [
+                    { name: "dojo", location: "dojo" },
+                    { name: "dijit", location: "dijit" },
+                    { name: "dojox", location: "dojox" },    
+                    { name: "svg2Gfx", location : "svg2Gfx" }     
+                ]
+            };
+            var kernelConfig = {
+                useWebSockets : true,
+                origins: {
+                    karmaPlatform: {
+                        url: 'https://frontend-191.karmadev.net/',
+                        includeStoremodel: true,
+                        socketController:"wss://frontend-191.karmadev.net/chatserver" ,
+                    },
+                },
+                newWindowsOpenAsTab: false,
+                windowSize: {
+                    width: '655',
+                    height: '600'
+                }
+            };
+        </script>
+        <script type="text/javascript" src="./dojo/dojo.js"></script>
+        <script type="text/javascript">
+            require([ 
+                'dojo/ready', 
+                'svg2Gfx'
+                ], function(ready, Svg2GfxConverter){
+                ready(function(){   
+                    var s = new Svg2GfxConverter({},'converter');
+                    s.startup();
+                });
+            });
+        </script>
+        <style type="text/css">
+            @IMPORT url("./svg2Gfx/resources/Svg2GfxConverter.css"); 
+        </style>
+    </head>
+    <body class="claro">
+        <div id="converter"></div>
+    </body>
+</html>
