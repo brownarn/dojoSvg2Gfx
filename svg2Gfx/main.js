@@ -1,16 +1,16 @@
 define(["dojo/_base/declare",
-			"require",
-			"dijit/_TemplatedMixin",
-			"dijit/_WidgetBase",
-			"dojo/_base/lang",
-			"dojo/_base/array",
-			"./IconContainer",
-			"./Svg2Gfx",
-			"dojo/dom",
-			"dojo/on",
-			"dojox/xml/DomParser",
-			"dojox/gfx/utils",
-			"dojo/text!./resources/Svg2GfxConverter.html"
+	"require",
+	"dijit/_TemplatedMixin",
+	"dijit/_WidgetBase",
+	"dojo/_base/lang",
+	"dojo/_base/array",
+	"./IconContainer",
+	"./Svg2Gfx",
+	"dojo/dom",
+	"dojo/on",
+	"dojox/xml/DomParser",
+	"dojox/gfx/utils",
+	"dojo/text!./resources/Svg2GfxConverter.html"
 ], function(declare, require, _TemplatedMixin, _WidgetBase, lang, array, IconContainer, Svg2Gfx, dom, on, DomParser, gfxUtils, template) {
 	
 	return declare(require.module.mid, [_WidgetBase, _TemplatedMixin], {
