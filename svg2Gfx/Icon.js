@@ -1,11 +1,11 @@
 define(['dojo/_base/declare',
-			'require',
-			"dojo/_base/lang",
-			'dijit/_WidgetBase',
-			'dijit/_TemplatedMixin',
-			"dojox/gfx",
-			"dojox/gfx/utils",
-			'dojo/text!./resources/Icon.html'
+	'require',
+	"dojo/_base/lang",
+	'dijit/_WidgetBase',
+	'dijit/_TemplatedMixin',
+	"dojox/gfx",
+	"dojox/gfx/utils",
+	'dojo/text!./resources/Icon.html'
 ], function(declare, require, lang, _WidgetBase, _TemplatedMixin, gfx, gfxUtils, template) {
 	
 	return declare(require.module.mid, [_WidgetBase, _TemplatedMixin], {
