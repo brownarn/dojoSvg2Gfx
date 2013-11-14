@@ -1,27 +1,27 @@
 define(['dojo/_base/declare',
-			'require', 
-			'dojox/gfx', 
-			'dojox/gfx/utils', 
-			'dojox/gfx/matrix', 
-			'dojo/_base/lang', 
-			'dojo/dom-construct', 
-			'dojo/_base/array', 
-			'dojo/_base/Color'
+	'require', 
+	'dojox/gfx', 
+	'dojox/gfx/utils', 
+	'dojox/gfx/matrix', 
+	'dojo/_base/lang', 
+	'dojo/dom-construct', 
+	'dojo/_base/array', 
+	'dojo/_base/Color'
 ], function(declare, require, gfx, gfxUtils, gfxMatrix, lang, construct, array, Color) {
 	
 	return declare(require.module.mid, null, {
-		//	summary:
-		//		This utility converts an svg xml to dojox gfx shapes.
-		//		It further parses the group and style nodes output from the output of the dojox/xml/DomParser utility.
+		//   summary:
+		//	This utility converts an svg xml to dojox gfx shapes.
+		//	It further parses the group and style nodes output from the output of the dojox/xml/DomParser utility.
 		//			
-		//		To extend this parser:
-		//			1. Read the SVG spec: http://www.w3.org/TR/SVG/expanded-toc.html
-		//			2. Create properties to be added from the svg spec that are in the xml input
-		//			3. Add properties to the shape object if necessary 
-		//			4. Create a parser to handle your shape if one doesn't exist, and map the properties
-		//			5. Modify the rendering bridge (e.g. svg.js) to handle the new properties
-		//			6. Modify the utils serialize and deserialize if necessary to handle the new properties
-		//			7. Create patch files for any changes to the dojox gfx _base, svg, shape, or utils.
+		//	To extend this parser:
+		//		1. Read the SVG spec: http://www.w3.org/TR/SVG/expanded-toc.html
+		//		2. Create properties to be added from the svg spec that are in the xml input
+		//		3. Add properties to the shape object if necessary 
+		//		4. Create a parser to handle your shape if one doesn't exist, and map the properties
+		//		5. Modify the rendering bridge (e.g. svg.js) to handle the new properties
+		//		6. Modify the utils serialize and deserialize if necessary to handle the new properties
+		//		7. Create patch files for any changes to the dojox gfx _base, svg, shape, or utils.
 		
 		surface : null,
 		height : null,
