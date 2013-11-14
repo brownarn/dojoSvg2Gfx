@@ -1,0 +1,610 @@
+Index: svg.js
+===================================================================
+--- svg.js	(.../Vendor/dojo/1.9.1/dojox/gfx/svg.js)	(revision 2967)
++++ svg.js	(.../Karma/trunk/karma191/dojox/gfx/svg.js)	(revision 2967)
+@@ -1,6 +1,6 @@
+-define(["dojo/_base/lang", "dojo/_base/sniff", "dojo/_base/window", "dojo/dom", "dojo/_base/declare", "dojo/_base/array",
++define(["dojo/_base/lang", "dojo/_base/array", "dojo/_base/sniff", "dojo/_base/window", "dojo/dom", "dojo/_base/declare", "dojo/_base/array",
+   "dojo/dom-geometry", "dojo/dom-attr", "dojo/_base/Color", "./_base", "./shape", "./path"],
+-function(lang, has, win, dom, declare, arr, domGeom, domAttr, Color, g, gs, pathLib){
++function(lang, array, has, win, dom, declare, arr, domGeom, domAttr, Color, g, gs, pathLib){
+ 
+ 	var svg = g.svg = {
+ 		// summary:
+@@ -90,12 +90,127 @@
+ 		longdashdotdot:		[8, 3, 1, 3, 1, 3]
+ 	};
+ 
+-	var clipCount = 0;
++	svg.attrLookup = {  // karma
++		//	summary:
++		//		used to look up actual attr names based on default object names
++		//TODO: add all svg objects; then convert all of the "set" functions
++		//		to use this instead of all the if blocks;
++		// keys equal the values in attrLookup of SvgToGfx.js and values equal SVG element names
++		stroke : {
++			id : "id",
++			color : "stroke",
++			opacity : "stroke-opacity",
++			width : "stroke-width",
++			cap : "stroke-linecap",
++			join : "stroke-linejoin",
++			miterlimit : "stroke-miterlimit",
++			dasharray : "stroke-dasharray",
++			dashoffset : "stroke-dashoffset"
++		},
++		
++		radialGradient : {
++			id : "id",
++			gradientTransform : "gradientTransform",
++			gradientUnits : "gradientUnits",
++			fy : "fy",
++			fx : "fx",
++			r : "r",
++			cy : "cy",
++			cx : "cx",
++			spreadMethod : "spreadMethod",
++			//xlinkhref : "xlink:href"
++		},	
++		
++		linearGradient : {
++			id : "id",
++			spreadMethod : "spreadMethod",
++			gradientTransform : "gradientTransform",
++			gradientUnits : "gradientUnits",
++			y1 : "y1",
++			x1 : "x1",
++			x2 : "x2",
++			y2 : "y2"
++			//xlinkhref : "xlink:href" //FIXME causes two identiacl xlink:href in node
++		},
++		
++		fill : {
++			id: "id",
++			fillopacity : "fill-opacity",
++			fillrule : "fill-rule",
++			fill : "fill",
++			//filter : "filter"
++		},
++		
++		filter : {
++			id: "id",
++			x: "x",
++			y: "y",
++			width: "width",
++			height: "height",
++			colorInterpolationFilters: "color-interpolation-filters",
++			xlinkhref : "xlink:href" // SVG spec filter property: uri to another filter
++		},
++		
++		feGaussianBlur : {
++			id: "id",
++			stdDeviation: "stdDeviation",
++			xlinkhref : "xlink:href"
++		},
++		
++		visibility : {
++			display : "display",
++			visibility : "visibility"
++		},
++		
++		marker : {
++			markerstart : "marker-start",
++			markerend : "marker-end",
++			markermid : "marker-mid"
++		},
++		
++		path : {
++			id : "id",
++			//color: "color",
++			path: "pathLength",
++			d : "d",
++			transform : "transform"
++		},
++		
++		pattern : {
++			id : "id"
++		},
++	};
+ 
++	svg.normalizeAttrs = function(obj, rawNode, nodeType) { // karma
++		//	summary:
++		//		this is used to avoid a bunch of "if" blocks in the svg bridge
++		//	obj:
++		//		the gfx obj w/ values for the svg attrs
++		//	rawNode:
++		//		the shape's raw node
++		//	nodeType:
++		//		e.g. stroke; used to look up the svg attr's name
++		for (var key in obj) {
++			var val = obj[key];
++			var attr = svg.attrLookup[nodeType][key];
++			if (attr != undefined) {
++				rawNode.setAttribute(attr, val);
++			} else {
++				//console.warn("NodeType has no attr ", key, ", nodeType: ", nodeType, ", obj: ", obj, ", attrLookup: ", svg.attrLookup[nodeType]);
++			}
++		}
++	};
++
++	var clipCount = 0;
++	
+ 	svg.Shape = declare("dojox.gfx.svg.Shape", gs.Shape, {
+ 		// summary:
+ 		//		SVG-specific implementation of dojox/gfx/shape.Shape methods
+-
++		extraRawNodeAttrs : null,  // karma
++		constructor : function() { // karma
++			this.extraRawNodeAttrs = {};
++		},
++		
+ 		destroy: function(){
+ 			if(this.fillStyle && "type" in this.fillStyle){
+ 				var fill = this.rawNode.getAttribute("fill"),
+@@ -113,7 +228,14 @@
+ 			}
+ 			gs.Shape.prototype.destroy.apply(this, arguments);
+ 		},
++		
++		setRawNodeAttr: function(attr, val) { // karma
++			this.extraRawNodeAttrs[attr] = val;
+ 
++			// Adds g#layer1 and the extraRawNodeAttrs (e.g. id, label) to group node
++			this.rawNode.setAttribute(attr, val);  
++		},
++		
+ 		setFill: function(fill){
+ 			// summary:
+ 			//		sets a fill object (SVG)
+@@ -122,8 +244,7 @@
+ 			//		(see dojox/gfx.defaultLinearGradient,
+ 			//		dojox/gfx.defaultRadialGradient,
+ 			//		dojox/gfx.defaultPattern,
+-			//		or dojo/_base/Color)
+-
++			//		or dojo/_base/Color)		
+ 			if(!fill){
+ 				// don't fill
+ 				this.fillStyle = null;
+@@ -131,14 +252,16 @@
+ 				this.rawNode.setAttribute("fill-opacity", 0);
+ 				return this;
+ 			}
+-			var f;
++			
++			var f, deserializing = false;
+ 			// FIXME: slightly magical. We're using the outer scope's "f", but setting it later
+ 			var setter = function(x){
+-					// we assume that we're executing in the scope of the node to mutate
+-					this.setAttribute(x, f[x].toFixed(8));
+-				};
++				// we assume that we're executing in the scope of the node to mutate
++				this.setAttribute(x, f[x].toFixed(8));
++			};
++			
+ 			if(typeof(fill) == "object" && "type" in fill){
+-				// gradient
++				// gradient or pattern
+ 				switch(fill.type){
+ 					case "linear":
+ 						f = g.makeParameters(g.defaultLinearGradient, fill);
+@@ -155,24 +278,69 @@
+ 						var pattern = this._setFillObject(f, "pattern");
+ 						arr.forEach(["x", "y", "width", "height"], setter, pattern);
+ 						break;
++					default:  // karma: deserializing fill object
++						f = g.makeParameters(g.defaultFill, fill);
++						deserializing = true;
++						break;
+ 				}
+-				this.fillStyle = f;
+-				return this;
++				
++				if (deserializing) { // karma
++					deserializing = false;
++					if (f.filter) { // adds filter=url(#filterNumber)
++						this.rawNode.setAttribute("filter", f.filter);
++					}
++					
++					if (typeof (fill.paint) == "object" && "id" in fill.paint) {
++						this.rawNode.setAttribute("fill", "url(#" + fill.paint.id + ")");
++					} else {
++						f.paint = g.normalizeColor(fill.paint);
++						this.rawNode.setAttribute("fill", f.paint.toCss());
++					}
++					
++					if (f.fillopacity) {
++						this.rawNode.setAttribute("fill-opacity", f.fillopacity);
++					} else {
++						this.rawNode.setAttribute("fill-opacity", 1); // SVG spec initial value
++					}
++					
++					if (f.fillrule) {
++						this.rawNode.setAttribute("fill-rule", f.fillrule);
++					} else {
++						this.rawNode.setAttribute("fill-rule", "nonzero"); // SVG spec initial value
++					}						
++				}
++		
++			} else {
++				// color object
++				f = g.normalizeColor(fill);
++				this.rawNode.setAttribute("fill", f.toCss());
++				this.rawNode.setAttribute("fill-opacity", f.a);
++				this.rawNode.setAttribute("fill-rule", "evenodd");
+ 			}
+-			// color object
+-			f = g.normalizeColor(fill);
+ 			this.fillStyle = f;
+-			this.rawNode.setAttribute("fill", f.toCss());
+-			this.rawNode.setAttribute("fill-opacity", f.a);
+-			this.rawNode.setAttribute("fill-rule", "evenodd");
+ 			return this;	// self
+ 		},
+ 
+ 		setStroke: function(stroke){
+ 			// summary:
+ 			//		sets a stroke object (SVG)
+-			// stroke: Object
+-			//		a stroke object (see dojox/gfx.defaultStroke)
++			// stroke: Object		
++			//		a stroke object, see dojox/gfx.defaultStroke
++							
++			var _getDashArrayName = function (str) { // karma			
++				var str = str.split(", ");
++				var da = [];
++                array.forEach(str, function(item, i) {
++                   da[i] = Number(item);
++                });  
++                
++				for(var n in svg.dasharray) {
++					if (svg.dasharray[n] instanceof Array && da.length == svg.dasharray[n].length) {
++						var match;
++						if (match = array.every(da, function(item, i) {return item === svg.dasharray[n][i];})) {return n;}
++					}
++				}
++			};
+ 
+ 			var rn = this.rawNode;
+ 			if(!stroke){
+@@ -186,12 +354,22 @@
+ 			if(typeof stroke == "string" || lang.isArray(stroke) || stroke instanceof Color){
+ 				stroke = { color: stroke };
+ 			}
++			
+ 			var s = this.strokeStyle = g.makeParameters(g.defaultStroke, stroke);
+-			s.color = g.normalizeColor(s.color);
++			
++			if (typeof s.color == "string") {
++				s.color = g.normalizeColor(s.color);
++			}			
++			
+ 			// generate attributes
+-			if(s){
+-				rn.setAttribute("stroke", s.color.toCss());
+-				rn.setAttribute("stroke-opacity", s.color.a);
++			if(s){			
++				if ("id" in s.color) { // karma
++					rn.setAttribute("stroke", "url(#" + s.color.id + ")");
++					rn.setAttribute("stroke-opacity", 1);
++				} else {
++					rn.setAttribute("stroke", s.color.toCss());
++					rn.setAttribute("stroke-opacity", s.opacity);
++				}
+ 				rn.setAttribute("stroke-width",   s.width);
+ 				rn.setAttribute("stroke-linecap", s.cap);
+ 				if(typeof s.join == "number"){
+@@ -200,36 +378,44 @@
+ 				}else{
+ 					rn.setAttribute("stroke-linejoin",   s.join);
+ 				}
+-				var da = s.style.toLowerCase();
+-				if(da in svg.dasharray){
+-					da = svg.dasharray[da];
+-				}
+-				if(da instanceof Array){
+-					da = lang._toArray(da);
+-					var i;
+-					for(i = 0; i < da.length; ++i){
+-						da[i] *= s.width;
++				if (s.dasharray) { // karma	
++					var da = s.dasharray;				
++					s.style = _getDashArrayName(da);								
++				} else {
++					var da = s.style.toLowerCase();
++					if(da in svg.dasharray){
++						da = svg.dasharray[da];
+ 					}
+-					if(s.cap != "butt"){
+-						for(i = 0; i < da.length; i += 2){
+-							da[i] -= s.width;
+-							if(da[i] < 1){ da[i] = 1; }
++					if(da instanceof Array){
++						da = lang._toArray(da);
++						var i;
++						for(i = 0; i < da.length; ++i){
++							da[i] *= s.width;
+ 						}
+-						for(i = 1; i < da.length; i += 2){
+-							da[i] += s.width;
++						if(s.cap != "butt"){
++							for(i = 0; i < da.length; i += 2){
++								da[i] -= s.width;
++								if(da[i] < 1){ da[i] = 1; }
++							}
++							for(i = 1; i < da.length; i += 2){
++								da[i] += s.width;
++							}
+ 						}
++						da = da.join(",");
+ 					}
+-					da = da.join(",");
+ 				}
+ 				rn.setAttribute("stroke-dasharray", da);
+-				rn.setAttribute("dojoGfxStrokeStyle", s.style);
++				if (s.dashoffset) { // karma
++					rn.setAttribute("stroke-dashoffset", s.dashoffset);
++				}
++				s.style ? rn.setAttribute("dojoGfxStrokeStyle", s.style) : rn.setAttribute("dojoGfxStrokeStyle", "solid");	 // karma modified			
+ 			}
+ 			return this;	// self
+ 		},
+ 
+ 		_getParentSurface: function(){
+ 			var surface = this.parent;
+-			for(; surface && !(surface instanceof g.Surface); surface = surface.parent);
++			for(; surface && !(surface instanceof g.Surface); surface = surface.parent); // karma, was commented out
+ 			return surface;
+ 		},
+ 
+@@ -304,16 +490,18 @@
+ 			//		shape. Once set, transforms, gradients, etc, can be applied.
+ 			//		(no fill & stroke by default)
+ 			var r = this.rawNode = rawNode;
+-			if(this.shape.type!="image"){
++			
++			if(this.shape.type!="image"){ 
+ 				r.setAttribute("fill", "none");
+ 			}
+-			r.setAttribute("fill-opacity", 0);
+-			r.setAttribute("stroke", "none");
+-			r.setAttribute("stroke-opacity", 0);
+-			r.setAttribute("stroke-width", 1);
+-			r.setAttribute("stroke-linecap", "butt");
+-			r.setAttribute("stroke-linejoin", "miter");
+-			r.setAttribute("stroke-miterlimit", 4);
++			// karma comments out because setting default attrs in this way may doesn't make sense
++			// r.setAttribute("fill-opacity", 0);  // karma comments out based on comments above
++			// r.setAttribute("stroke", "none");
++			// r.setAttribute("stroke-opacity", 0);
++			// r.setAttribute("stroke-width", 1);
++			// r.setAttribute("stroke-linecap", "butt");
++			// r.setAttribute("stroke-linejoin", "miter");
++			// r.setAttribute("stroke-miterlimit", 4);
+ 			// Bind GFX object with SVG node for ease of retrieval - that is to
+ 			// save code/performance to keep this association elsewhere
+ 			r.__gfxObject__ = this;
+@@ -342,7 +530,6 @@
+ 		},
+ 
+ 		// move family
+-
+ 		_moveToFront: function(){
+ 			// summary:
+ 			//		moves a shape to front of its parent's list of shapes (SVG)
+@@ -462,9 +649,21 @@
+ 					this.rawNode.setAttribute(i, this.shape[i]);
+ 				}
+ 			}
+-			if(this.shape.r != null){
++			// if(this.shape.r != null){ // karma comments out to use below
++				// this.rawNode.setAttribute("ry", this.shape.r);
++				// this.rawNode.setAttribute("rx", this.shape.r);
++			// }
++	
++			// Driven by SVG spec
++			if (this.shape.ry || this.shape.rx) {
++				this.rawNode.setAttribute("ry", this.shape.ry ? this.shape.ry : this.shape.rx);
++				this.rawNode.setAttribute("rx", this.shape.rx ? this.shape.rx : this.shape.ry);
++			} else if (this.shape.r && !(this.shape.ry || this.shape.rx)){
+ 				this.rawNode.setAttribute("ry", this.shape.r);
+ 				this.rawNode.setAttribute("rx", this.shape.r);
++			} else {
++				this.rawNode.setAttribute("ry", 0);
++				this.rawNode.setAttribute("rx", 0);
+ 			}
+ 			return this;	// self
+ 		}
+@@ -492,16 +691,25 @@
+ 				this.shape = g.makeParameters(this.shape, { points: points });
+ 				if(closed && this.shape.points.length){
+ 					this.shape.points.push(this.shape.points[0]);
+-				}
+-			}else{
+-				this.shape = g.makeParameters(this.shape, points);
++				} 			
++			}else{	
++				this.shape = g.makeParameters(this.shape, points);		
++				if ("points" in points && !(points.points instanceof Array)) { // karma: after parsing prior to serializing
++					var _points = [];
++					array.forEach(points.points.trim().split(" "), function(item) {
++						var _p = item.split(",");
++						_points.push({x: Number(_p[0]), y: Number(_p[1])});
++					});
++					this.shape.points = _points;
++				}		
+ 			}
+ 			this.bbox = null;
+ 			this._normalizePoints();
+-			var attr = [], p = this.shape.points;
++			var attr = [], p = this.shape.points;				
+ 			for(var i = 0; i < p.length; ++i){
+ 				attr.push(p[i].x.toFixed(8), p[i].y.toFixed(8));
+ 			}
++			this.rawNode.setAttribute("id", this.shape.id); // karma	
+ 			this.rawNode.setAttribute("points", attr.join(" "));
+ 			return this;	// self
+ 		}
+@@ -567,7 +775,7 @@
+ 			var rawNode = this.rawNode,
+ 				oldParent = rawNode.parentNode,
+ 				_measurementNode = rawNode.cloneNode(true);
+-			_measurementNode.style.visibility = "hidden";
++				_measurementNode.style.visibility = "hidden";
+ 
+ 			// solution to the "orphan issue" in FF
+ 			var _width = 0, _text = _measurementNode.firstChild.nodeValue;
+@@ -577,11 +785,12 @@
+ 			// (nodeValue == "" hangs firefox)
+ 			if(_text!=""){
+ 				while(!_width){
+-//Yang: work around svgweb bug 417 -- http://code.google.com/p/svgweb/issues/detail?id=417
+-if (_measurementNode.getBBox)
+-					_width = parseInt(_measurementNode.getBBox().width);
+-else
+-	_width = 68;
++					//Yang: work around svgweb bug 417 -- http://code.google.com/p/svgweb/issues/detail?id=417
++					if (_measurementNode.getBBox) {
++						_width = parseInt(_measurementNode.getBBox().width);
++					} else {
++						_width = 68;
++					}
+ 				}
+ 			}
+ 			oldParent.removeChild(_measurementNode);
+@@ -622,10 +831,14 @@
+ 			// newShape: Object
+ 			//		an SVG path string or a path object (see dojox/gfx.defaultPath)
+ 			this.inherited(arguments);
+-			if(this.shape.path){
+-				this.rawNode.setAttribute("d", this.shape.path);
+-			}else{
+-				this.rawNode.removeAttribute("d");
++			
++			if (this.shape.d && !this.shape.path) {  // karma modified for 'd' property
++				this.rawNode.setAttribute("d", this.shape.d); 
++				this.rawNode.removeAttribute("path");
++				
++			} else if (!this.shape.d && this.shape.path) {
++				this.rawNode.setAttribute("d", this.shape.path); 
++				this.rawNode.removeAttribute("path");
+ 			}
+ 			return this;	// self
+ 		}
+@@ -722,7 +935,9 @@
+ 	svg.Surface = declare("dojox.gfx.svg.Surface", gs.Surface, {
+ 		// summary:
+ 		//		a surface object to be used for drawings (SVG)
++		fills: null,
+ 		constructor: function(){
++			this.fills = {};
+ 			gs.Container._init.call(this);
+ 		},
+ 		destroy: function(){
+@@ -732,6 +947,81 @@
+ 			this.defNode = null;	// release the external reference
+ 			this.inherited(arguments);
+ 		},
++		addFill : function(fill) {  // karma
++			var fillDefNode = null;
++			if (!this.fills[fill.id]) {  // karma fills comes from utils
++				this.fills[fill.id] = fill;
++				
++				switch(fill.type) {
++				case "linear":
++					fillDefNode = this._addFillToDefsNode(fill, "linearGradient");
++					break;
++				case "radial":
++					fillDefNode = this._addFillToDefsNode(fill, "radialGradient");
++					break;
++				case "pattern":
++					fillDefNode = this._addFillToDefsNode(fill, "pattern");
++					break;
++				case "filter":
++					fillDefNode = this._addFillToDefsNode(fill, "filter");
++					break;
++				default:
++					break;
++				}
++				
++			} else {
++				fillDefNode = svg.getRef("url(#" + fill.id + ")");
++			}
++			return fillDefNode;
++		},
++		
++		_addFillToDefsNode : function(f, nodeType) {  // karma
++			var _createElementNS = function(ns, nodeType) {
++				if (win.doc.createElementNS) {
++					return win.doc.createElementNS(ns, nodeType);
++				} else {
++					return win.doc.createElement(nodeType);
++				}
++			};
++			var svgns = svg.xmlns.svg;
++			var defs = this.defNode;
++
++			var fill = _createElementNS(svgns, nodeType);
++
++			svg.normalizeAttrs(f, fill, nodeType); 
++		
++			if (f.xlinkhref) {
++				fill.setAttributeNS(svg.xmlns.xlink, "xlink:href", f.xlinkhref);
++			}
++			if (f.colors) { //colors is an array
++				for (var i = 0; i < f.colors.length; ++i) {
++					var c = f.colors[i];
++					var t = _createElementNS(svgns, "stop")
++					var cc = c.color = g.normalizeColor(c.color);
++					t.setAttribute("id", c.id);
++					if (typeof c.offset == "number") {
++						t.setAttribute("offset", c.offset.toFixed(8));
++					} else if (typeof c.offset == "string") {
++						t.setAttribute("offset", c.offset);
++					}
++					t.setAttribute("stop-color", cc.toCss());
++					if (f.colors[i].stopopacity) {
++						t.setAttribute("stop-opacity", cc.a);
++					}
++					fill.appendChild(t);
++				}
++			}
++			if (f.feGaussianBlurs) {
++				var blur = f.feGaussianBlurs;
++				var subTag = _createElementNS(svgns, "feGaussianBlur");
++				subTag.setAttribute("id", blur.id);
++				subTag.setAttribute("stdDeviation", blur.stdDeviation);
++				fill.appendChild(subTag);
++			}
++			defs.appendChild(fill);
++			return fill;
++		},
++		
+ 		setDimensions: function(width, height){
+ 			// summary:
+ 			//		sets the width and height of the rawNode
+@@ -748,6 +1038,7 @@
+ 			}
+ 			return this;	// self
+ 		},
++
+ 		getDimensions: function(){
+ 			// summary:
+ 			//		returns an object with properties "width" and "height"
+@@ -843,7 +1134,7 @@
+ 				}
+ 				C.add.apply(this, arguments);
+ 				// update clipnode with new parent
+-				shape.setClip(shape.clip);
++				shape.setClip(shape.clip); // karma commented this out
+ 			}
+ 			return this;	// self
+ 		},
+@@ -901,7 +1192,6 @@
+ 			if(!this.rawNode){ return null; }
+ 			var shape = new shapeType(),
+ 				node = _createElementNS(svg.xmlns.svg, shapeType.nodeType);
+-
+ 			shape.setRawNode(node);
+ 			shape.setShape(rawShape);
+ 			// rawNode.appendChild() will be done inside this.add(shape) below
