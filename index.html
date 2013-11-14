@@ -7,7 +7,7 @@
         <script type="text/javascript">
             var dojoConfig = {
                 async: true,
-                baseUrl: "/abrown/svg2gfx",
+                baseUrl: "/yourFolderInWWW/svg2gfx",
                 dojoBlankHtmlUrl: 'blank.html',
             
                 packages: [
@@ -21,9 +21,9 @@
                 useWebSockets : true,
                 origins: {
                     karmaPlatform: {
-                        url: 'https://frontend-191.karmadev.net/',
+                        url: 'https://yourDomain/',
                         includeStoremodel: true,
-                        socketController:"wss://frontend-191.karmadev.net/chatserver" ,
+                        socketController:"wss://yourDomain:yourPort(optional)/yourServer
                     },
                 },
                 newWindowsOpenAsTab: false,
