@@ -60,7 +60,7 @@ define(["dojo/_base/declare",
 		_readerOnLoad: function(evt, file) {
 			var name = file.name.split(".")[0];
 			
-			// uses the dojox/gfx DOM parser to parse the xml file creating a JavaScript object of the SVG
+			// uses the dojox/xml DOM parser to parse the xml file creating a JavaScript object of the SVG
 			var svgJS = DomParser.parse(evt.target.result); 
 			
 			var parser = new Svg2Gfx({height: this.height, width: this.width, overflow: this.overflow});
