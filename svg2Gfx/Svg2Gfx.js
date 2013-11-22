@@ -138,52 +138,6 @@ define(['dojo/_base/declare',
 					obj.group.setTransform(gfxMatrix);
 					obj.group.applyTransform(this._parseTransformation(obj.transform));
 				}
-				// if (obj.fill) {
-					// obj.group.setRawNodeAttr("fill", obj.fill);
-				// }
-				// if (obj.fillopacity) {
-					// obj.group.setRawNodeAttr("fill-opacity", obj.fillopacity);
-				// }
-				// if (obj.stroke) {
-					// obj.group.setRawNodeAttr("stroke", obj.stroke);
-				// }
-				// if (obj.strokemiterlimit) {
-					// obj.group.setRawNodeAttr("stroke-miterlimit", obj.strokemiterlimit);
-				// }
-				// if (obj.strokewidth) {
-					// obj.group.setRawNodeAttr("stroke-width", obj.strokewidth);
-				// }
-				// if (obj.strokeopacity) {
-					// obj.group.setRawNodeAttr("stroke-opacity", obj.strokeopacity);
-				// }
-				// if (obj.fontsize)
-				// {
-					// obj.group.setRawNodeAttr("font-size", obj.fontsize);
-				// }
-				// if (obj.fontweight)
-				// {
-					// obj.group.setRawNodeAttr("font-weight", obj.fontweight);
-				// }
-				// if (obj.fontstyle)
-				// {
-					// obj.group.setRawNodeAttr("font-style", obj.fontstyle);
-				// }
-				// if (obj.lineheight)
-				// {
-					// obj.group.setRawNodeAttr("line-height", obj.lineheight);
-				// }
-				// if (obj.letterspacing)
-				// {
-					// obj.group.setRawNodeAttr("letter-spacing", obj.letterspacing);
-				// }
-				// if (obj.wordspacing)
-				// {
-					// obj.group.setRawNodeAttr("word-spacing", obj.wordspacing);
-				// }
-				// if (obj.fontfamily)
-				// {
-					// obj.group.setRawNodeAttr("font-family", obj.fontfamily);
-				// }
 			}
 				
 			// DEFS
